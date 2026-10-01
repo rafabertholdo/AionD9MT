@@ -1,0 +1,8 @@
+build/
+prebuilt/
+*.log
+.DS_Store
+*_out.txt
+
+# Tracy profiler client — optional dev tooling, fetched on demand for TRACY=1 builds
+vendor/tracy/

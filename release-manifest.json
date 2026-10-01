@@ -1,0 +1,56 @@
+{
+  "release": "v0.1.0",
+  "asset": "AionD9MT.tar.gz",
+  "sha256": "e54db4dbfdd7d582f27a547c9c1712a69acd36afe9607c6113fdcb447c228553",
+  "d9mt": {
+    "repository": "https://github.com/neo773/d9mt",
+    "revision": "237e2935e58355d1ee41fda097e1af272d5f62f0",
+    "sourceArchiveSHA256": "d8115f9a73a13176f76a561ccbce7fda907bbb6163fed328026d74730d2785b2"
+  },
+  "wine": {
+    "repository": "https://github.com/Sikarugir-App/wine",
+    "revision": "db11d0fe6a169c457e23d007e20404643d067aa8"
+  },
+  "dxmt": {
+    "repository": "https://github.com/3Shain/dxmt",
+    "release": "v0.80",
+    "asset": "dxmt-v0.80-builtin.tar.gz",
+    "sha256": "8f260e36b5739e68f3bad613381441385c4dc7b85b78ba8de653d5a6a264529d"
+  },
+  "runtime": "WS11WineSikarugir11.0_1",
+  "platform": "macOS Apple Silicon with Rosetta 2",
+  "patches": {
+    "build-companion.py": "c215d8b08961463ceb138e22feca4f6d17a2bec0d4695e01fc392dc6e4091771",
+    "build-driver.sh": "e8fe151f0c2e640f8ba7a8ad6edcbb948fe7a9130a5fd1964f58525d7049f207",
+    "camera_mouse_capture.h": "5d36eebbf4f235adaf9dcd0c8198106e3d36812411f3e26fa26a9d95125eb6fc",
+    "camera_mouse_capture_tests.c": "71ea2c943d464d159f77cbe6c710e42680bd50cc36dd47a898b339a194ab2d42",
+    "compute-dispatch.patch": "e05c062d4b4856dfa736eb79e2afa040cdd30baef1edd63a3ff76508c52a5585",
+    "cursor-warp.patch": "cddb83f1944abcce498b2ffe0120f74ff2ec1ec461e1dabf868fa1ae4a6c2014",
+    "d9mt.patch": "e2fd5dd7bba1321e35de0a7dfee8d40e8eda0b597c55a084df3da95bdc1df267",
+    "depth-stencil-cache.patch": "76e34943c10ef213f034031179ebee2a205ca28ad60a5ee85e20f63a15ee4300",
+    "diagnostics.patch": "3302115d8159e3dab34ac06b453888521b5d502d3938931de01d5d073696b9a0",
+    "direct-input.patch": "ec733d1293cc05e8aef44b7a304eaee2ad6163a032d0837be1619a071a03ce3c",
+    "dxt3_probe.c": "dc30bf712cf4da95d3aebfdc458fa809567b967cd3ad28f76bff7c34be21f7e9",
+    "frame-input.patch": "ff3c1d4891ac8e8e69c04d63abb764f06263b04d9fe8879f66af15a4fff90be4",
+    "frame_input_pump.h": "973133d172959b20105676265119d2e03b1bbc0625f4bbfc210340cd02b7327f",
+    "frame_input_pump_tests.c": "22e720b4c82d50f9304e6db01074f56d867aecb74f951e468a7087cc6d933831",
+    "input_dispatch.h": "429fb0e9b698bc7866205a11812b87c487ec9231dace03942de185e92544b27b",
+    "input_dispatch_tests.c": "0429bc16c97c51e2c8885beab5395beddb14c365a31ccd9c72eb3ec2239807b5",
+    "mac_driver_loader.c": "dad2316b5c505029f9b68de4b5660ee21615ed40776eb4ac5be11ea405e4b82c",
+    "managed_update_probe.c": "5fccd023d393891a8dc96d045065b2f994d3252e1332f4836b5c0a11cc9b3482",
+    "metal-invariance.patch": "56fd47f56fd3bb31028a6b3f9b943dc8db27541858ad702bc373a83e06d3e17e",
+    "mouse_motion.h": "a2209f83d4ac6ea090c8876a493170a8c81aa3690ff3a87c09f5830e8d03d167",
+    "mouse_motion_tests.c": "bb821529a3aa730fe94f7bea4b9d3e209a78ae854f7d5ca03cb5ab6c0cce946c",
+    "relative-mouse.patch": "63f8280324f5e0d004159da389ac75f58008dcf1d5030e06a546d7c7b6bfc425",
+    "render_probe.c": "d18800795671a58dfe7eaffe90a5baaf90dcb8cf74d6623e255f46483d3a9b95",
+    "skip-shaders.patch": "e49c6479c72d9e09460fabe32c24a166e34fa5eeeb440f8e90951b3c6221d48f",
+    "test_build_companion.py": "984d2583c7048310ff4165d111679934d09cf529eb26c10e250b23bc924361d2",
+    "test_cursor_warp.py": "2896129b6236ec76e45772022456337ff30a15a7b37df0c2b46967c538450634",
+    "test_depth_stencil_cache.py": "758acc4d00745772679037c72074c7d09091c8cd62da836df75054b67d2b8cf8",
+    "texture_conversion_probe.c": "269e122116174d8cfe10fd948cd2d1e450b528ec79ee5f3c89f2543f7fdce056",
+    "timer-input.patch": "236fd9a4e84ce620bfbd7aa3ffe08a45e173be7c6ccdff3106192d3d66498733",
+    "wine-driver.patch": "5eb97941ef7ad5f849cf134bedf8bcf34ceac974115112fba11c3bf818ab9dc6",
+    "wine_bridge.c": "0bde75c4012caf362ab2d0f18b2e985941c74d972c17ffd14fa84c075c26e369",
+    "wine_bridge_tests.c": "5434c0a477856baa3d9a73c73acb61a419c8d4547699be446cb99e590369299d"
+  }
+}

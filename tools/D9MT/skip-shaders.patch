@@ -1,0 +1,69 @@
+--- a/src/d3d9fe/d9mt_context.cpp
++++ b/src/d3d9fe/d9mt_context.cpp
+@@ -23,6 +23,7 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <deque>
++#include <string>
+ #include <map>
+ #include <unordered_map>
+ #include <unordered_set>
+@@ -770,8 +771,39 @@
+     const CompiledShader* fs  = nullptr;
+     Rc<DxvkShader>        vsRef;
+     Rc<DxvkShader>        fsRef;
++    bool                  skipDraws = false; // D9MT_SKIP_SHADERS match
+   };
+ 
++  // D9MT_SKIP_SHADERS: comma-separated shader names (e.g. VS_<sha1>) whose
++  // draws are dropped. Per-game workaround for passes this backend renders
++  // wrongly (Aion's water overlays spread over all terrain on Metal).
++  static bool shaderSkipped(const Rc<DxvkShader>& shader) {
++    static const std::vector<std::string> names = [] {
++      std::vector<std::string> result;
++      if (const char* list = std::getenv("D9MT_SKIP_SHADERS")) {
++        std::string value(list);
++        size_t start = 0;
++        while (start <= value.size()) {
++          size_t end = value.find(',', start);
++          if (end == std::string::npos)
++            end = value.size();
++          if (end > start)
++            result.push_back(value.substr(start, end - start));
++          start = end + 1;
++        }
++      }
++      return result;
++    }();
++    if (names.empty())
++      return false;
++    std::string name = shader->debugName();
++    for (const auto& entry : names) {
++      if (name == entry)
++        return true;
++    }
++    return false;
++  }
++
+   struct PsoKey {
+     DxvkShader* vs = nullptr;
+     DxvkShader* fs = nullptr;
+@@ -1276,6 +1308,7 @@
+     auto entry = std::make_unique<PsoEntry>();
+     entry->vsRef = vs;
+     entry->fsRef = fs;
++    entry->skipDraws = shaderSkipped(vs) || shaderSkipped(fs);
+     PsoEntry* ptr = entry.get();
+     s_psoCache.emplace(key, std::move(entry));
+ 
+@@ -4709,8 +4742,8 @@
+       }
+     }
+ 
+-    if (!entry || !entry->pso)
+-      return false; // creation failure already logged once
++    if (!entry || !entry->pso || entry->skipDraws)
++      return false; // creation failure already logged once, or skipped
+ 
+     if (dstate.pso != entry) {
+       // The set-0 argument-buffer LAYOUT comes from shader reflection, so it

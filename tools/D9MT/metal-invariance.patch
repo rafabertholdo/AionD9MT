@@ -1,0 +1,37 @@
+--- a/src/d9mtmetal/unix.m
++++ b/src/d9mtmetal/unix.m
+@@ -50,6 +50,9 @@
+   // translation bug (e.g. unguarded normalize()/rsqrt producing unclamped NaN),
+   // fixed in the SPIR-V->MSL path — never by globally slowing every game's math.
+   opts.mathMode = MTLMathModeFast;
++  // D3D9 multipass (depth EQUAL) needs the [[position, invariant]] that
++  // spirv-cross emits to be honored; without this Metal ignores it.
++  opts.preserveInvariance = YES;
+ 
+   NSError *err = nil;
+   id<MTLLibrary> lib = [device newLibraryWithSource:src
+@@ -181,7 +184,7 @@
+ /* Bump when our native compile/store path changes the bytes for the same
+  * input (this is the native-side belt-and-suspenders companion to the PE-side
+  * codegen_epoch, which is already folded into the key). */
+-#define D9MT_CACHE_SCHEMA_VERSION 1
++#define D9MT_CACHE_SCHEMA_VERSION 2 /* 2: preserve position invariance */
+ 
+ /* MTLB container magic, little-endian, at offset 0 of every .metallib. */
+ static const uint8_t k_mtlb_magic[4] = { 'M', 'T', 'L', 'B' };
+@@ -518,6 +521,7 @@
+         // path (the fast_math arg is ignored; both paths must agree so the disk
+         // cache is consistent regardless of which backend compiled an entry).
+         "-ffast-math",
++        "-fpreserve-invariance",
+         "-o", outPath, inPath, NULL };
+     pid_t pid = 0;
+     int rc = posix_spawn(&pid, argv[0], NULL, NULL,
+@@ -563,6 +567,7 @@
+   MTLCompileOptions *opts = [[MTLCompileOptions alloc] init];
+   opts.languageVersion = MTLLanguageVersion3_0;
+   opts.mathMode = MTLMathModeFast;  // fast always
++  opts.preserveInvariance = YES;     // keep depth-EQUAL multipass exact
+ 
+   __block id<MTLLibrary> out_lib = nil;
+   __block NSError *out_err = nil;

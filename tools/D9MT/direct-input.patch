@@ -1,0 +1,34 @@
+--- a/src/d9mtmetal/d9mtmetal.h
++++ b/src/d9mtmetal/d9mtmetal.h
+@@ -35,6 +35,7 @@
+    * ourselves. Requires MTL_CAPTURE_ENABLED=1 at launch. action: 1=begin, 0=end.
+    * begin captures all command buffers on `queue` until end is called. */
+   D9MT_FUNC_CAPTURE = 4,
++  D9MT_FUNC_PUMP_INPUT = 5,
+   D9MT_FUNC_COUNT,
+ };
+ 
+--- a/src/d9mtmetal/unix.m
++++ b/src/d9mtmetal/unix.m
+@@ -26,6 +26,7 @@
+ extern char **environ;
+ 
+ typedef int NTSTATUS; /* wine unixlib_entry_t contract */
++#include "d9mt_input_dispatch.h"
+ #define STATUS_SUCCESS 0
+ 
+ static NTSTATUS d9mt_new_library_from_source(void *args) {
+@@ -715,6 +716,7 @@
+     d9mt_library_for_key,
+     d9mt_hud_set_color,
+     d9mt_capture,
++    d9mtDispatchDriverInput,
+ };
+ 
+ /* identical param layouts for 32-bit callers (see header ABI rule) */
+@@ -725,4 +727,5 @@
+     d9mt_library_for_key,
+     d9mt_hud_set_color,
+     d9mt_capture,
++    d9mtDispatchDriverInput,
+ };

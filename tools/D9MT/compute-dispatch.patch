@@ -1,0 +1,43 @@
+--- a/src/d3d9fe/d9mt_context.cpp
++++ b/src/d3d9fe/d9mt_context.cpp
+@@ -166,6 +166,8 @@
+     obj_handle_t cmdbuf  = 0;                 // retained
+     obj_handle_t encoder = 0;                 // retained while open
+     EncoderKind  kind    = EncoderKind::None;
++    obj_handle_t computePipeline = 0;
++    WMTSize computeThreadgroupSize = { 0, 0, 0 };
+ 
+     // per-submission completion work (EVENT query flips etc.), run on the
+     // watcher thread when the command buffer retires
+@@ -577,12 +579,8 @@
+   void cmdListBindComputePipeline(const void* list, obj_handle_t pso,
+     const WMTSize& threadgroupSize) {
+     auto& state = cmdListState(list);
+-
+-    wmtcmd_compute_setpso cmd = { };
+-    cmd.type = WMTComputeCommandSetPSO;
+-    cmd.pso = pso;
+-    cmd.threadgroup_size = threadgroupSize;
+-    encodeComputeCmd(state, &cmd);
++    state.computePipeline = pso;
++    state.computeThreadgroupSize = threadgroupSize;
+   }
+ 
+ 
+@@ -592,7 +590,15 @@
+     wmtcmd_compute_dispatch cmd = { };
+     cmd.type = WMTComputeCommandDispatch;
+     cmd.size = { x, y, z };
+-    encodeComputeCmd(state, &cmd);
++
++    // winemetal keeps threadgroup_size only within one encodeCommands call.
++    // Send SetPSO and Dispatch in the same chain, including repeated dispatches.
++    wmtcmd_compute_setpso pipeline = { };
++    pipeline.type = WMTComputeCommandSetPSO;
++    pipeline.pso = state.computePipeline;
++    pipeline.threadgroup_size = state.computeThreadgroupSize;
++    pipeline.next.set(&cmd);
++    encodeComputeCmd(state, &pipeline);
+   }
+ 
+ 

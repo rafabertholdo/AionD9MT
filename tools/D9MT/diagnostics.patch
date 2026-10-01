@@ -1,0 +1,470 @@
+--- a/src/d3d9fe/d9mt_context.cpp
++++ b/src/d3d9fe/d9mt_context.cpp
+@@ -19,16 +19,20 @@
+ //    boundaries (single queue, automatic hazard tracking).
+ 
+ #include <atomic>
++#include <cstdarg>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+ #include <deque>
++#include <string>
+ #include <map>
+ #include <unordered_map>
+ #include <unordered_set>
+ #include <vector>
+ 
+ #include <windows.h>
++#include <sys/stat.h>
++#include <unistd.h>
+ 
+ #include "d9mt_backend.h"
+ #include "d9mt_trace.h"
+@@ -46,6 +50,122 @@
+ 
+ namespace dxvk::d9mt {
+ 
++  // Diagnostic one-frame draw dump (D9MT_DRAW_DUMP=1). Creating "d9mt-dump" in
++  // the game directory records the next presented frame to d9mt-dump.txt.
++  std::atomic<FILE*> g_drawDump = { nullptr };
++  std::mutex         g_drawDumpMutex;
++  uint32_t           g_drawDumpIndex = 0;
++  std::vector<std::string> g_drawSkip;
++  std::atomic<bool>  g_drawSkipActive = { false };
++
++  uint32_t g_frameDrawIndex = 0;
++
++  // "+NAME" entries in d9mt-skip: draw matching (e.g. color-masked
++  // occlusion-query) geometry with all color channels written.
++  bool drawForcedVisible(const std::string& vs, const std::string& fs) {
++    if (!g_drawSkipActive.load(std::memory_order_relaxed))
++      return false;
++    std::lock_guard<std::mutex> lock(g_drawDumpMutex);
++    for (const auto& entry : g_drawSkip) {
++      if (entry[0] == '+' && (vs.find(entry.c_str() + 1) != std::string::npos
++                           || fs.find(entry.c_str() + 1) != std::string::npos))
++        return true;
++    }
++    return false;
++  }
++
++  bool drawSkipped(const std::string& vs, const std::string& fs) {
++    if (!g_drawSkipActive.load(std::memory_order_relaxed))
++      return false;
++    std::lock_guard<std::mutex> lock(g_drawDumpMutex);
++    uint32_t index = g_frameDrawIndex++;
++    for (const auto& entry : g_drawSkip) {
++      if (entry[0] == '+')
++        continue; // force-visible entries are handled by drawForcedVisible
++      if (entry[0] == '#') {
++        unsigned first = 0, last = 0;
++        int fields = std::sscanf(entry.c_str() + 1, "%u-%u", &first, &last);
++        if (fields == 1)
++          last = first;
++        if (fields >= 1 && index >= first && index <= last)
++          return true;
++        continue;
++      }
++      if (vs.find(entry) != std::string::npos || fs.find(entry) != std::string::npos)
++        return true;
++    }
++    return false;
++  }
++
++  std::atomic<FILE*> g_apiLog = { nullptr };
++
++  bool apiLogActive() {
++    return g_apiLog.load(std::memory_order_relaxed) != nullptr;
++  }
++
++  void apiLog(const char* format, ...) {
++    std::lock_guard<std::mutex> lock(g_drawDumpMutex);
++    FILE* file = g_apiLog.load();
++    if (!file)
++      return;
++    va_list args;
++    va_start(args, format);
++    std::vfprintf(file, format, args);
++    va_end(args);
++  }
++
++  void drawDumpTick() {
++    static const bool enabled = [] {
++      const char* v = std::getenv("D9MT_DRAW_DUMP");
++      return v && v[0] == '1';
++    }();
++    if (!enabled)
++      return;
++
++    std::lock_guard<std::mutex> lock(g_drawDumpMutex);
++    if (FILE* file = g_drawDump.exchange(nullptr)) {
++      std::fclose(file);
++      if (FILE* api = g_apiLog.exchange(nullptr))
++        std::fclose(api);
++      return;
++    }
++
++    struct stat st;
++    {
++      // live skip list: one VS/FS name substring per line in "d9mt-skip"
++      std::vector<std::string> skip;
++      if (FILE* file = std::fopen("d9mt-skip", "r")) {
++        char line[256];
++        while (std::fgets(line, sizeof(line), file)) {
++          std::string entry(line);
++          while (!entry.empty() && (entry.back() == '\n' || entry.back() == '\r' || entry.back() == ' '))
++            entry.pop_back();
++          if (!entry.empty())
++            skip.push_back(entry);
++        }
++        std::fclose(file);
++      }
++      g_drawSkip = std::move(skip);
++      g_drawSkipActive.store(!g_drawSkip.empty());
++      g_frameDrawIndex = 0;
++    }
++
++    if (::stat("d9mt-dump", &st) != 0)
++      return;
++    ::unlink("d9mt-dump");
++    g_drawDumpIndex = 0;
++    g_drawDump.store(std::fopen("d9mt-dump.txt", "w"));
++    g_apiLog.store(std::fopen("d9mt-api.txt", "w"));
++  }
++
++  void drawDumpCall(const char* kind, uint32_t count, uint32_t instances, uint32_t first, int32_t base) {
++    if (!g_drawDump.load(std::memory_order_relaxed))
++      return;
++    std::lock_guard<std::mutex> lock(g_drawDumpMutex);
++    if (FILE* f = g_drawDump.load())
++      std::fprintf(f, "  %s n=%u inst=%u first=%u base=%d\n", kind, count, instances, first, base);
++  }
++
+   // ==========================================================================
+   // GPU-query result side state (Queries stage). Each DxvkGpuQuery pool token
+   // carries one result slot here: occlusion queries get the summed-up
+@@ -4688,6 +4808,14 @@
+     key.fs = fs.ptr();
+     key.state = m_state.gp.state;
+ 
++    if (d9mt::g_drawSkipActive.load(std::memory_order_relaxed)
++     && d9mt::drawForcedVisible(vs->debugName(), fs->debugName())) {
++      const auto& b = key.state.omBlend[0];
++      key.state.omBlend[0] = DxvkOmAttachmentBlend(VK_FALSE,
++        b.srcColorBlendFactor(), b.dstColorBlendFactor(), b.colorBlendOp(),
++        b.srcAlphaBlendFactor(), b.dstAlphaBlendFactor(), b.alphaBlendOp(), 0xfu);
++    }
++
+     // the front-end uses dynamic strides (ilBindings carry stride 0);
+     // Metal bakes strides into the vertex descriptor, so write them in
+     for (uint32_t i = 0; i < key.state.il.bindingCount(); i++) {
+@@ -5248,6 +5376,101 @@
+       D9MT_MICRO_END(11, t11);
+     }
+ 
++    if (d9mt::g_drawSkipActive.load(std::memory_order_relaxed)
++     && d9mt::drawSkipped(dstate.pso->vsRef->debugName(), dstate.pso->fsRef->debugName()))
++      return false;
++
++    if (d9mt::g_drawDump.load(std::memory_order_relaxed)) {
++      std::lock_guard<std::mutex> lock(d9mt::g_drawDumpMutex);
++      if (FILE* f = d9mt::g_drawDump.load()) {
++        const auto& st = m_state.gp.state;
++        const auto& ds = m_state.dyn.depthStencilState;
++        const auto& b  = st.omBlend[0];
++        const auto& vp = m_state.vp.viewports[0];
++        std::fprintf(f, "D %u vs=%s fs=%s topo=%u rt0=%u rt1=%u dsf=%u ro=%u fb=%ux%u"
++          " blend=%u:%u,%u,%u/%u,%u,%u wm=%x a2c=%u depth=%u%u op%u stencil=%u cull=%u"
++          " bias=%g,%g clip=%u sc=%08x,%08x,%08x,%08x,%08x,%08x vp=%g,%g,%g,%g,%g,%g\n",
++          d9mt::g_drawDumpIndex++,
++          dstate.pso->vsRef->debugName().c_str(), dstate.pso->fsRef->debugName().c_str(),
++          uint32_t(st.ia.primitiveTopology()),
++          uint32_t(st.rt.getColorFormat(0)), uint32_t(st.rt.getColorFormat(1)),
++          uint32_t(st.rt.getDepthStencilFormat()), uint32_t(dstate.fbReadOnlyAspects),
++          dstate.fbExtent.width, dstate.fbExtent.height,
++          uint32_t(b.blendEnable()), uint32_t(b.srcColorBlendFactor()),
++          uint32_t(b.dstColorBlendFactor()), uint32_t(b.colorBlendOp()),
++          uint32_t(b.srcAlphaBlendFactor()), uint32_t(b.dstAlphaBlendFactor()),
++          uint32_t(b.alphaBlendOp()), uint32_t(b.colorWriteMask()),
++          uint32_t(st.ms.enableAlphaToCoverage()),
++          uint32_t(ds.depthTest()), uint32_t(ds.depthWrite()), uint32_t(ds.depthCompareOp()),
++          uint32_t(ds.stencilTest()), uint32_t(m_state.dyn.cullMode),
++          m_state.dyn.depthBias.depthBiasConstant, m_state.dyn.depthBias.depthBiasSlope,
++          uint32_t(st.rs.depthClipEnable()),
++          st.sc.specConstants[0], st.sc.specConstants[1], st.sc.specConstants[2],
++          st.sc.specConstants[3], st.sc.specConstants[4], st.sc.specConstants[5],
++          vp.x, vp.y, vp.width, vp.height, vp.minDepth, vp.maxDepth);
++        std::fprintf(f, "  io vsOut=%x fsIn=%x\n", m_state.gp.shaders.vs->info().outputMask,
++          m_state.gp.shaders.fs->info().inputMask);
++
++        std::fprintf(f, "  il");
++        for (uint32_t i = 0; i < st.il.attributeCount(); i++) {
++          const auto& a = st.ilAttributes[i];
++          std::fprintf(f, " a%u:f%u:b%u:+%u", a.location(), uint32_t(a.format()), a.binding(), a.offset());
++        }
++        for (uint32_t i = 0; i < st.il.bindingCount(); i++) {
++          const auto& bb = st.ilBindings[i];
++          std::fprintf(f, " b%u:s%u:r%u:d%u", bb.binding(),
++            m_state.vi.vertexStrides[bb.binding()], uint32_t(bb.inputRate()), bb.divisor());
++        }
++        std::fprintf(f, "\n");
++
++        for (uint32_t stage = 0; stage < 2u; stage++) {
++          const d9mt::CompiledShader* shader = stage ? dstate.pso->fs : dstate.pso->vs;
++          for (const auto& ref : shader->resources) {
++            if (ref.isUniformBuffer) {
++              const auto& buffer = m_uniformBuffers[ref.slot];
++              std::fprintf(f, "  %s ub slot%u %s len=%llu", stage ? "fs" : "vs", ref.slot,
++                buffer.defined() ? "set" : "NULL",
++                (unsigned long long)(buffer.defined() ? buffer.length() : 0u));
++              // float registers start after the 16 int4 registers
++              if (buffer.defined() && buffer.length() >= 256u + 64u) {
++                if (const float* data = reinterpret_cast<const float*>(buffer.mapPtr(256u))) {
++                  for (uint32_t i = 0; i < 16u; i++)
++                    std::fprintf(f, "%s%g", (i % 4u) ? "," : " | ", data[i]);
++                }
++              }
++              std::fprintf(f, "\n");
++              continue;
++            }
++            const auto& view = m_resources[ref.slot].imageView;
++            if (view == nullptr) {
++              std::fprintf(f, "  %s img slot%u NULL\n", stage ? "fs" : "vs", ref.slot);
++              continue;
++            }
++            auto key = view->info();
++            const auto& info = view->image()->info();
++            std::fprintf(f, "  %s img slot%u vt%u f%u imgf%u %ux%ux%u mips%u/%u+%u layers%u swz%04x\n",
++              stage ? "fs" : "vs", ref.slot, uint32_t(key.viewType), uint32_t(key.format),
++              uint32_t(info.format), info.extent.width, info.extent.height, info.extent.depth,
++              uint32_t(key.mipCount), info.mipLevels, uint32_t(key.mipIndex),
++              uint32_t(key.layerCount), uint32_t(key.packedSwizzle));
++          }
++          for (const auto& ref : shader->samplers) {
++            const auto& sampler = m_samplers[ref.slot];
++            if (sampler == nullptr) {
++              std::fprintf(f, "  %s smp slot%u NULL\n", stage ? "fs" : "vs", ref.slot);
++              continue;
++            }
++            const auto& k = sampler->key();
++            std::fprintf(f, "  %s smp slot%u heap%d addr%u,%u,%u filt%u%u%u border%u lod%u-%u\n",
++              stage ? "fs" : "vs", ref.slot, int(sampler->getDescriptor().samplerIndex),
++              uint32_t(k.u.p.addressU), uint32_t(k.u.p.addressV), uint32_t(k.u.p.addressW),
++              uint32_t(k.u.p.minFilter), uint32_t(k.u.p.magFilter), uint32_t(k.u.p.mipMode),
++              uint32_t(k.u.p.hasBorder), uint32_t(k.u.p.minLod), uint32_t(k.u.p.maxLod));
++          }
++        }
++      }
++    }
++
+     return true;
+   }
+ 
+@@ -5329,6 +5552,7 @@
+       cmd.instance_count = draw.instanceCount;
+       cmd.base_instance = draw.firstInstance;
+       d9mt::encodeRenderCmd(cstate, &cmd);
++      d9mt::drawDumpCall("draw", draw.vertexCount, draw.instanceCount, draw.firstVertex, 0);
+     }
+ 
+     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, count);
+@@ -5443,6 +5667,7 @@
+       cmd.base_vertex = draw.vertexOffset;
+       cmd.base_instance = draw.firstInstance;
+       d9mt::encodeRenderCmd(cstate, &cmd);
++      d9mt::drawDumpCall("indexed", draw.indexCount, draw.instanceCount, draw.firstIndex, draw.vertexOffset);
+     }
+ 
+     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, count);
+--- a/src/d3d9fe/d9mt_presenter.cpp
++++ b/src/d3d9fe/d9mt_presenter.cpp
+@@ -46,6 +46,8 @@
+ 
+ namespace dxvk::d9mt {
+ 
++  void drawDumpTick();
++
+   // --------------------------------------------------------------------------
+   // Multi-frame Metal frame capture. Enabled by D9MT_CAPTURE=1 (launcher pairs
+   // it with MTL_CAPTURE_ENABLED=1). When the trigger file "d9mt-capture" appears
+@@ -757,6 +759,7 @@
+ 
+             // One-shot frame capture (no-op unless D9MT_CAPTURE=1 + trigger file).
+             d9mt::captureTick(queue);
++            d9mt::drawDumpTick();
+ 
+             // Frame signal fires when the present command buffer retires.
+             // Keep presenter + proxy alive until then.
+--- a/src/d3d9fe/d9mt_shader.cpp
++++ b/src/d3d9fe/d9mt_shader.cpp
+@@ -343,7 +343,8 @@
+       }
+ 
+       if (const char* dump = std::getenv("D9MT_DUMP_MSL")) {
+-        std::string path = std::string(dump) + "\\" + shader->debugName() + ".metal";
++        std::string path = std::string(dump) + "\\" + shader->debugName()
++          + "_u" + std::to_string(moduleInfo.undefinedInputs) + ".metal";
+         if (FILE* f = std::fopen(path.c_str(), "w")) {
+           std::fwrite(msl.data(), 1, msl.size(), f);
+           std::fclose(f);
+--- a/vendor/dxvk/src/d3d9/d3d9_device.cpp
++++ b/vendor/dxvk/src/d3d9/d3d9_device.cpp
+@@ -31,6 +31,8 @@
+ #pragma fenv_access (on)
+ #endif
+ 
++namespace dxvk::d9mt { void apiLog(const char* format, ...); bool apiLogActive(); }
++
+ namespace dxvk {
+ 
+   D3D9DeviceEx::D3D9DeviceEx(
+@@ -1622,6 +1624,11 @@
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderTarget(
+           DWORD              RenderTargetIndex,
+           IDirect3DSurface9* pRenderTarget) {
++    if (d9mt::apiLogActive()) {
++      D3DSURFACE_DESC desc = { };
++      if (pRenderTarget) pRenderTarget->GetDesc(&desc);
++      d9mt::apiLog("RT %lu=%p %ux%u f%u\n", (unsigned long)RenderTargetIndex, (void*)pRenderTarget, desc.Width, desc.Height, uint32_t(desc.Format));
++    }
+     D3D9DeviceLock lock = LockDevice();
+ 
+     if (unlikely(pRenderTarget == nullptr && RenderTargetIndex == 0))
+@@ -1770,6 +1777,11 @@
+ 
+ 
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) {
++    if (d9mt::apiLogActive()) {
++      D3DSURFACE_DESC desc = { };
++      if (pNewZStencil) pNewZStencil->GetDesc(&desc);
++      d9mt::apiLog("DS %p %ux%u f%u\n", (void*)pNewZStencil, desc.Width, desc.Height, uint32_t(desc.Format));
++    }
+     D3D9DeviceLock lock = LockDevice();
+ 
+     D3D9Surface* ds = static_cast<D3D9Surface*>(pNewZStencil);
+@@ -2274,6 +2286,7 @@
+ 
+ 
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
++    if (d9mt::apiLogActive()) d9mt::apiLog("RS %u=%lx\n", uint32_t(State), (unsigned long)Value);
+     D3D9DeviceLock lock = LockDevice();
+ 
+     // D3D9 only allows reading for values 0 and 7-255 so we don't need to do anything but return OK
+@@ -2761,6 +2774,27 @@
+ 
+ 
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) {
++    if (d9mt::apiLogActive()) {
++      D3DSURFACE_DESC desc = { };
++      if (pTexture && pTexture->GetType() == D3DRTYPE_TEXTURE)
++        static_cast<IDirect3DTexture9*>(pTexture)->GetLevelDesc(0, &desc);
++      d9mt::apiLog("TEX %lu=%p %ux%u f%u usage%lx pool%u", (unsigned long)Stage, (void*)pTexture,
++        desc.Width, desc.Height, uint32_t(desc.Format), (unsigned long)desc.Usage, uint32_t(desc.Pool));
++      D3DLOCKED_RECT locked = { };
++      if (desc.Pool == D3DPOOL_MANAGED && desc.Format == D3DFMT_A8R8G8B8 && desc.Width <= 256
++       && SUCCEEDED(static_cast<IDirect3DTexture9*>(pTexture)->LockRect(0, &locked, nullptr, D3DLOCK_READONLY))) {
++        double sum[4] = { };
++        for (UINT y = 0; y < desc.Height; y++) {
++          const uint8_t* row = reinterpret_cast<const uint8_t*>(locked.pBits) + y * locked.Pitch;
++          for (UINT x = 0; x < desc.Width * 4u; x++)
++            sum[x % 4u] += row[x];
++        }
++        double count = double(desc.Width) * double(desc.Height);
++        d9mt::apiLog(" cpu-bgra-mean=%.0f,%.0f,%.0f,%.0f", sum[0] / count, sum[1] / count, sum[2] / count, sum[3] / count);
++        static_cast<IDirect3DTexture9*>(pTexture)->UnlockRect(0);
++      }
++      d9mt::apiLog("\n");
++    }
+     if (unlikely(InvalidSampler(Stage)))
+       return D3D_OK;
+ 
+@@ -2791,6 +2825,7 @@
+           DWORD                    Stage,
+           D3DTEXTURESTAGESTATETYPE Type,
+           DWORD                    Value) {
++    if (d9mt::apiLogActive()) d9mt::apiLog("TSS %lu.%u=%lx\n", (unsigned long)Stage, uint32_t(Type), (unsigned long)Value);
+     return SetStateTextureStageState(Stage, RemapTextureStageStateType(Type), Value);
+   }
+ 
+@@ -2821,6 +2856,7 @@
+           DWORD               Sampler,
+           D3DSAMPLERSTATETYPE Type,
+           DWORD               Value) {
++    if (d9mt::apiLogActive()) d9mt::apiLog("SS %lu.%u=%lx\n", (unsigned long)Sampler, uint32_t(Type), (unsigned long)Value);
+     if (unlikely(InvalidSampler(Sampler)))
+       return D3D_OK;
+ 
+@@ -3037,6 +3073,7 @@
+           UINT             NumVertices,
+           UINT             StartIndex,
+           UINT             PrimitiveCount) {
++    if (d9mt::apiLogActive()) d9mt::apiLog("DIP type%u base%d min%u nv%u start%u prims%u\n", uint32_t(PrimitiveType), BaseVertexIndex, MinVertexIndex, NumVertices, StartIndex, PrimitiveCount);
+     D3D9DeviceLock lock = LockDevice();
+ 
+     if (unlikely(m_state.vertexDecl == nullptr))
+@@ -3495,6 +3532,10 @@
+ 
+ 
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetVertexShader(IDirect3DVertexShader9* pShader) {
++    if (d9mt::apiLogActive()) {
++      auto* common = GetCommonShader(static_cast<D3D9VertexShader*>(pShader));
++      d9mt::apiLog("VS %s\n", common ? common->GetShader()->debugName().c_str() : "NULL");
++    }
+     D3D9DeviceLock lock = LockDevice();
+ 
+     D3D9VertexShader* shader = static_cast<D3D9VertexShader*>(pShader);
+@@ -3852,6 +3893,10 @@
+ 
+ 
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPixelShader(IDirect3DPixelShader9* pShader) {
++    if (d9mt::apiLogActive()) {
++      auto* common = GetCommonShader(static_cast<D3D9PixelShader*>(pShader));
++      d9mt::apiLog("PS %s\n", common ? common->GetShader()->debugName().c_str() : "NULL");
++    }
+     D3D9DeviceLock lock = LockDevice();
+ 
+     D3D9PixelShader* shader = static_cast<D3D9PixelShader*>(pShader);
+@@ -3928,6 +3973,12 @@
+     UINT   StartRegister,
+     const float* pConstantData,
+     UINT   Vector4fCount) {
++    if (d9mt::apiLogActive() && pConstantData) {
++      d9mt::apiLog("PSC %u n%u", StartRegister, Vector4fCount);
++      for (UINT i = 0; i < Vector4fCount * 4u && i < 32u; i++)
++        d9mt::apiLog("%s%g", (i % 4u) ? "," : " | ", pConstantData[i]);
++      d9mt::apiLog("\n");
++    }
+     D3D9DeviceLock lock = LockDevice();
+ 
+     return SetShaderConstants <
+--- a/vendor/dxvk/src/d3d9/d3d9_query.cpp
++++ b/vendor/dxvk/src/d3d9/d3d9_query.cpp
+@@ -2,6 +2,8 @@
+ 
+ #include "d3d9_device.h"
+ 
++namespace dxvk::d9mt { void apiLog(const char* format, ...); bool apiLogActive(); }
++
+ namespace dxvk {
+ 
+   D3D9Query::D3D9Query(
+@@ -95,6 +97,8 @@
+ 
+ 
+   HRESULT STDMETHODCALLTYPE D3D9Query::Issue(DWORD dwIssueFlags) {
++    if (d9mt::apiLogActive())
++      d9mt::apiLog("IQ %p t%u f%lx\n", (void*)this, uint32_t(m_queryType), (unsigned long)dwIssueFlags);
+     // Note: No need to submit to CS if we don't do anything!
+ 
+     if (dwIssueFlags == D3DISSUE_BEGIN) {
+@@ -150,6 +154,9 @@
+     }
+ 
+     HRESULT hr = this->GetQueryData(pData, dwSize);
++    if (d9mt::apiLogActive())
++      d9mt::apiLog("GQ %p t%u f%lx hr%lx v%lu\n", (void*)this, uint32_t(m_queryType), (unsigned long)dwGetDataFlags,
++        (unsigned long)hr, (hr == D3D_OK && pData && dwSize >= 4 && m_queryType == D3DQUERYTYPE_OCCLUSION) ? (unsigned long)*static_cast<DWORD*>(pData) : 0ul);
+ 
+     // If we get S_FALSE and it's not from the fact
+     // they didn't call end, do some flushy stuff...

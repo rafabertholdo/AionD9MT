@@ -1,0 +1,30 @@
+--- a/vendor/dxvk/src/d3d9/d3d9_swapchain.cpp
++++ b/vendor/dxvk/src/d3d9/d3d9_swapchain.cpp
+@@ -61,6 +61,7 @@
+       }
+     }
+ 
++    d9mtStopInputPumpTimer(&inputPumpWindow, &inputPumpTimer);
+     DestroyBackBuffers();
+ 
+     ResetWindowProc(m_window);
+@@ -110,6 +111,8 @@
+           HWND     hDestWindowOverride,
+     const RGNDATA* pDirtyRegion,
+           DWORD    dwFlags) {
++    d9mtUpdateInputPumpTimer(hDestWindowOverride ? hDestWindowOverride : m_presentParams.hDeviceWindow,
++                             &inputPumpWindow, &inputPumpTimer);
+     d9mtPumpFrameInput();
+     D3D9DeviceLock lock = m_parent->LockDevice();
+ 
+--- a/vendor/dxvk/src/d3d9/d3d9_swapchain.h
++++ b/vendor/dxvk/src/d3d9/d3d9_swapchain.h
+@@ -166,6 +166,8 @@
+ 
+     uint32_t                  m_frameLatencyCap = 0;
+ 
++    HWND                      inputPumpWindow = nullptr;
++    UINT_PTR                  inputPumpTimer = 0;
+     HWND                      m_window   = nullptr;
+     HMONITOR                  m_monitor  = nullptr;
+ 

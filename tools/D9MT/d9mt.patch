@@ -1,0 +1,35 @@
+--- a/src/d9mtmetal/dll.c
++++ b/src/d9mtmetal/dll.c
+@@ -12,8 +12,7 @@
+ /* wine-internal MEMORY_INFORMATION_CLASS value, stable since wine 7 */
+ #define MemoryWineUnixFuncs 1000
+ 
+-extern NTSTATUS WINAPI __wine_unix_call(unixlib_handle_t handle,
+-                                        unsigned int code, void *args);
++typedef NTSTATUS (WINAPI *UnixCallDispatcher)(unixlib_handle_t, unsigned int, void *);
+ extern NTSTATUS WINAPI NtQueryVirtualMemory(HANDLE process, LPCVOID addr,
+                                             int info_class, PVOID buffer,
+                                             SIZE_T length, SIZE_T *res_len);
+@@ -43,5 +42,10 @@
+     if (status)
+       return status;
+   }
+-  return __wine_unix_call(d9mt_unix_handle, code, params);
++  /* Wine 11 exports the dispatcher as a data pointer, not a function. */
++  UnixCallDispatcher *dispatcher = (UnixCallDispatcher *)GetProcAddress(
++      GetModuleHandleW(L"ntdll.dll"), "__wine_unix_call_dispatcher");
++  if (!dispatcher || !*dispatcher)
++    return (NTSTATUS)0xc0000002;
++  return (*dispatcher)(d9mt_unix_handle, code, params);
+ }
+--- a/src/d3d9fe/d9mt_instance.cpp
++++ b/src/d3d9fe/d9mt_instance.cpp
+@@ -144,7 +144,7 @@
+       { VK_FORMAT_R16G16B16A16_SNORM,       WMTPixelFormatRGBA16Snorm,    WMT_NONE,
+         COLOR_STD, COLOR_STD & ~(FMT_RT | FMT_BLEND), BUF_TEXEL },
+       { VK_FORMAT_R16G16B16A16_SFLOAT,      WMTPixelFormatRGBA16Float,    WMT_NONE,
+-        COLOR_STD, COLOR_STD & ~(FMT_RT | FMT_BLEND), BUF_TEXEL },
++        COLOR_STD | FMT_STORAGE, (COLOR_STD | FMT_STORAGE) & ~(FMT_RT | FMT_BLEND), BUF_TEXEL },
+ 
+       // 32-bit per channel
+       { VK_FORMAT_R32_UINT,                 WMTPixelFormatR32Uint,        WMT_NONE,

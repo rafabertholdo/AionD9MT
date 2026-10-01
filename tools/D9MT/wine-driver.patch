@@ -1,0 +1,20 @@
+--- a/dlls/winemac.drv/macdrv.h
++++ b/dlls/winemac.drv/macdrv.h
+@@ -153,6 +153,7 @@
+                                     const struct window_rects *new_rects, struct window_surface *surface);
+ extern void macdrv_DestroyCursorIcon(HCURSOR cursor);
+ extern BOOL macdrv_GetCursorPos(LPPOINT pos);
++extern void d9mtProcessPendingEvents(void);
+ extern void macdrv_SetCapture(HWND hwnd, UINT flags);
+ extern void macdrv_SetCursor(HWND hwnd, HCURSOR cursor);
+ extern BOOL macdrv_SetCursorPos(INT x, INT y);
+--- a/dlls/winemac.drv/mouse.c
++++ b/dlls/winemac.drv/mouse.c
+@@ -687,6 +687,7 @@
+  */
+ BOOL macdrv_GetCursorPos(LPPOINT pos)
+ {
++    d9mtProcessPendingEvents();
+     CGPoint pt;
+     BOOL ret;
+ 

@@ -1,0 +1,10 @@
+--- a/dlls/winemac.drv/mouse.c
++++ b/dlls/winemac.drv/mouse.c
+@@ -840,6 +840,7 @@
+  */
+ BOOL macdrv_SetCursorPos(INT x, INT y)
+ {
++    d9mtProcessPendingEvents();
+     BOOL ret = macdrv_set_cursor_position(CGPointMake(x, y));
+     if (ret)
+         TRACE("warped to %d,%d\n", x, y);

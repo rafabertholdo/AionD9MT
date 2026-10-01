@@ -1,0 +1,18 @@
+--- a/vendor/dxvk/src/d3d9/d3d9_swapchain.cpp
++++ b/vendor/dxvk/src/d3d9/d3d9_swapchain.cpp
+@@ -4,6 +4,7 @@
+ 
+ #include "d3d9_hud.h"
+ #include "d3d9_window.h"
++#include "../../../../src/d3d9fe/d9mt_frame_input_pump.h"
+ 
+ namespace dxvk {
+ 
+@@ -109,6 +110,7 @@
+           HWND     hDestWindowOverride,
+     const RGNDATA* pDirtyRegion,
+           DWORD    dwFlags) {
++    d9mtPumpFrameInput();
+     D3D9DeviceLock lock = m_parent->LockDevice();
+ 
+     m_parent->SetMostRecentlyUsedSwapchain(this);

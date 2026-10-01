@@ -1,0 +1,13 @@
+--- a/src/d3d9fe/d9mt_context.cpp
++++ b/src/d3d9fe/d9mt_context.cpp
+@@ -1402,7 +1402,9 @@
+           | (uint64_t(ds.depthWrite())   << 2)
+           | (uint64_t(ds.depthCompareOp()) << 3)
+           | (uint64_t(ds.stencilTest())  << 6)
+-          | (uint64_t(readOnlyAspects & 3u) << 7)
++          // Vulkan depth/stencil aspect bits are 2/4, not compact bits 1/2.
++          // Keep both without overlapping the front stencil operation at bit 9.
++          | (uint64_t((readOnlyAspects >> 1) & 3u) << 7)
+           | (packOp(ds.stencilOpFront()) << 9);
+       key.second = packOp(ds.stencilOpBack());
+     }
