@@ -39,6 +39,25 @@ ReRun's package passes 94 tests, 0 failures. The signed app and clean renderer
 bundle build successfully. Detailed artifacts and rollback backups are in
 `.build/d9mt-test/checkpoints/camera-lag-20261001/`.
 
+## Executable data buffer control
+
+Renderer-owned Metal buffers use native read/write permission without
+execute permission by default. Wine can add execute permission when the
+client's DEP policy is disabled, causing pathological memory-write overhead
+under Rosetta. During the reported slowdown, the game thread was copying
+vertex data and shader constants while the submission thread was mostly idle,
+and the client accumulated approximately 123,000 memory faults per second.
+The destination Metal buffer mappings were readable, writable and executable.
+After removing execute permission from those buffers, the user confirmed
+normal gameplay on 2026-10-04. The exact Rosetta tracking mechanism remains
+an inference from the samples and protection comparison.
+
+The fix changes only renderer-owned buffer allocations, after Metal
+registration and before their first write. It preserves read/write access
+and the client's DEP policy. `D9MT_DATA_BUFFER_NX=0` disables it for comparison.
+A matching frontend and companion build is required. Do not replace mapped
+renderer libraries during a live game session.
+
 ## Build
 
 Requirements: Xcode and its Metal compiler, `mingw-w64`, `glslang`, `bison`,

@@ -1,6 +1,6 @@
 # AionD9MT
 
-Aion 1.9's experimental Direct3D 9 to Metal renderer for ReRun on Apple Silicon.
+Aion 1.9's Direct3D 9 to Metal renderer for ReRun on Apple Silicon.
 This repository owns the renderer source, Wine 11 adapter, Aion patches, and
 regression probes. It does not contain the Aion game client or server.
 
@@ -21,7 +21,7 @@ Its CrossOver installation commands should not be used for ReRun.
 
 ```sh
 python3 scripts/test.py
-python3 scripts/verify-release.py dist/v0.1.0
+python3 scripts/verify-release.py dist/v0.1.1
 ```
 
 ## Build
@@ -41,8 +41,8 @@ rebuilding may produce different bytes and requires a new checksum and release.
 ## Release delivery
 
 Keep binary assets in ignored `dist/`, outside Git history. Publish
-`dist/v0.1.0/AionD9MT.tar.gz`, `SHA256SUMS`, and `release-manifest.json`
-as assets of GitHub Release `v0.1.0` after committing and pushing the source.
+`dist/v0.1.1/AionD9MT.tar.gz`, `SHA256SUMS`, and `release-manifest.json`
+as assets of GitHub Release `v0.1.1` after committing and pushing the source.
 The repository must be public for ReRun's unauthenticated downloads.
 
 ReRun pins the versioned asset URL and SHA-256. It downloads on the first Play

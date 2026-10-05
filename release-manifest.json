@@ -1,7 +1,7 @@
 {
-  "release": "v0.1.0",
+  "release": "v0.1.1",
   "asset": "AionD9MT.tar.gz",
-  "sha256": "e54db4dbfdd7d582f27a547c9c1712a69acd36afe9607c6113fdcb447c228553",
+  "sha256": "17452fcf10dbdf9c02dd2c62f875a215fc68ebbc352e75e393cb248db2b4cfa8",
   "d9mt": {
     "repository": "https://github.com/neo773/d9mt",
     "revision": "237e2935e58355d1ee41fda097e1af272d5f62f0",
@@ -20,13 +20,16 @@
   "runtime": "WS11WineSikarugir11.0_1",
   "platform": "macOS Apple Silicon with Rosetta 2",
   "patches": {
-    "build-companion.py": "c215d8b08961463ceb138e22feca4f6d17a2bec0d4695e01fc392dc6e4091771",
+    "build-companion.py": "ae947c51a409302817ee0e031832373bbea72f813083e5d93b89e383f1848c11",
     "build-driver.sh": "e8fe151f0c2e640f8ba7a8ad6edcbb948fe7a9130a5fd1964f58525d7049f207",
     "camera_mouse_capture.h": "5d36eebbf4f235adaf9dcd0c8198106e3d36812411f3e26fa26a9d95125eb6fc",
     "camera_mouse_capture_tests.c": "71ea2c943d464d159f77cbe6c710e42680bd50cc36dd47a898b339a194ab2d42",
     "compute-dispatch.patch": "e05c062d4b4856dfa736eb79e2afa040cdd30baef1edd63a3ff76508c52a5585",
     "cursor-warp.patch": "cddb83f1944abcce498b2ffe0120f74ff2ec1ec461e1dabf868fa1ae4a6c2014",
     "d9mt.patch": "e2fd5dd7bba1321e35de0a7dfee8d40e8eda0b597c55a084df3da95bdc1df267",
+    "data-buffer-protection.patch": "2c5d8d990167423452996c6bb3a3ae69a397026d6a8a684e62a53cd01487725d",
+    "data_buffer_protection.h": "1736af887a1b6db88aab77846c7b854e62f6021570b845d77e7bc497e575bc83",
+    "data_buffer_protection_tests.c": "1bdbc2e3e12e53931e609bb98a338c6a837dab07b0e0dceefae9219693a4a8c0",
     "depth-stencil-cache.patch": "76e34943c10ef213f034031179ebee2a205ca28ad60a5ee85e20f63a15ee4300",
     "diagnostics.patch": "3302115d8159e3dab34ac06b453888521b5d502d3938931de01d5d073696b9a0",
     "direct-input.patch": "ec733d1293cc05e8aef44b7a304eaee2ad6163a032d0837be1619a071a03ce3c",
@@ -52,5 +55,19 @@
     "wine-driver.patch": "5eb97941ef7ad5f849cf134bedf8bcf34ceac974115112fba11c3bf818ab9dc6",
     "wine_bridge.c": "0bde75c4012caf362ab2d0f18b2e985941c74d972c17ffd14fa84c075c26e369",
     "wine_bridge_tests.c": "5434c0a477856baa3d9a73c73acb61a419c8d4547699be446cb99e590369299d"
+  },
+  "components": {
+    "NOTICE.txt": "9039079b87155d84b2287b22302d8c21974ff84ff042b1871b617cb3af40d0e4",
+    "d3d9.dll": "4c1f7c1c01e987349634f62576c271879c02d43ef0f7e427710f6d13267967ce",
+    "i386-windows/d9mtmetal.dll": "fc28448fe6e0a85c62522ae60a6c4d12d17eb81157ea1b5148904840a2e33ef1",
+    "i386-windows/winemetal.dll": "20a6865facebdaac92b6c06fadf37d2efb5a242b22ca1c349bb57d7ad43df8e3",
+    "licenses/DXMT-LICENSE": "6b928413c6308c106f3e0080bd94b6427b56d587d400fd40e6cbfbab7d9c4ae1",
+    "licenses/SPIRV-Cross-LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "licenses/Wine-COPYING.LIB": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c",
+    "x86_64-unix/d9mtmetal.so": "ed9dc1af65ed76a380c4fafb543d408f87fd2aa16e92a5ef6cdb5a5935ffb705",
+    "x86_64-unix/winemac.so": "1cae1bbc2c27112ea857adb90900a56a9ba6097ed11a89f1c8734b3a358c991e",
+    "x86_64-unix/winemetal.so": "3d50d7f39c64778c71d0af2fce1cde818d09ffbce7c4f7b8ae24ae1df567c0ca",
+    "x86_64-windows/d9mtmetal.dll": "7369a4defbc6f79ea48742981738d7a8c61c24798fb59cd7bb59967b84967b6f",
+    "x86_64-windows/winemetal.dll": "514245d533c750599614311a792c45ed600aef52948571d98c0fc70fd3df16e0"
   }
 }

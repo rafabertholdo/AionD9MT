@@ -1,0 +1,102 @@
+--- a/src/d9mtmetal/d9mtmetal.h
++++ b/src/d9mtmetal/d9mtmetal.h
+@@ -36,7 +36,15 @@
+    * begin captures all command buffers on `queue` until end is called. */
+   D9MT_FUNC_CAPTURE = 4,
+   D9MT_FUNC_PUMP_INPUT = 5,
++  D9MT_FUNC_PROTECT_DATA_BUFFER = 6,
+   D9MT_FUNC_COUNT,
++};
++
++struct d9mt_data_buffer_params {
++  uint64_t address;
++  uint64_t size;
++  uint32_t ret_ok;
++  uint32_t reserved;
+ };
+ 
+ struct d9mt_capture_params {
+--- a/src/d9mtmetal/unix.m
++++ b/src/d9mtmetal/unix.m
+@@ -27,6 +27,7 @@
+ 
+ typedef int NTSTATUS; /* wine unixlib_entry_t contract */
+ #include "d9mt_input_dispatch.h"
++#include "data_buffer_protection.h"
+ #define STATUS_SUCCESS 0
+ 
+ static NTSTATUS d9mt_new_library_from_source(void *args) {
+@@ -707,6 +708,16 @@
+   return STATUS_SUCCESS;
+ }
+ 
++static NTSTATUS d9mt_protect_data_buffer(void *args) {
++  struct d9mt_data_buffer_params *params = args;
++  if (!params)
++    return (NTSTATUS)0xc000000du;
++  params->ret_ok = 0;
++  NTSTATUS status = d9mtProtectDataBuffer(params->address, params->size);
++  params->ret_ok = status == STATUS_SUCCESS;
++  return status;
++}
++
+ typedef NTSTATUS (*unixlib_entry_t)(void *args);
+ 
+ __attribute__((visibility("default")))
+@@ -717,6 +728,7 @@
+     d9mt_hud_set_color,
+     d9mt_capture,
+     d9mtDispatchDriverInput,
++    d9mt_protect_data_buffer,
+ };
+ 
+ /* identical param layouts for 32-bit callers (see header ABI rule) */
+@@ -728,4 +740,5 @@
+     d9mt_hud_set_color,
+     d9mt_capture,
+     d9mtDispatchDriverInput,
++    d9mt_protect_data_buffer,
+ };
+--- a/src/d3d9fe/d9mt_resources.cpp
++++ b/src/d3d9fe/d9mt_resources.cpp
+@@ -39,6 +39,24 @@
+ namespace dxvk {
+ 
+   namespace {
++
++    // Keep renderer data out of Wine's forced executable mappings. These ranges
++    // are owned exclusively by the renderer and never contain client code.
++    void protectRendererDataBuffer(void* memory, VkDeviceSize size) {
++      static const bool enabled = [] {
++        const char* value = std::getenv("D9MT_DATA_BUFFER_NX");
++        return !value || std::strcmp(value, "0") != 0;
++      }();
++      if (!enabled)
++        return;
++      d9mt_data_buffer_params params = { };
++      params.address = reinterpret_cast<uintptr_t>(memory);
++      params.size = size;
++      int status = D9MT_UnixCall(D9MT_FUNC_PROTECT_DATA_BUFFER, &params);
++      if (status || !params.ret_ok)
++        Logger::warn("d9mt: could not remove executable permission from data buffer");
++    }
++
+ 
+     // -----------------------------------------------------------------------
+     // Texture side info. Vendored view-map classes have fixed (Vulkan-shaped)
+@@ -637,6 +655,7 @@
+         // writes a fresh chunk) as a multi-hundred-ms stutter. Faulting the
+         // whole range here moves that cost to chunk creation, and the
+         // suballocator recycles chunks so steady-state writes stay warm.
++        protectRendererDataBuffer(mem, ChunkSize);
+         std::memset(mem, 0, ChunkSize);
+ 
+         auto chunk = std::make_unique<Chunk>();
+@@ -840,6 +859,7 @@
+     // cliff as createChunk(). Dedicated buffers (UP ring orphans, constant ring
+     // wraps, large staging) are the ones the menu hot-path allocates fresh, so
+     // faulting here keeps the per-draw write off the cliff.
++    protectRendererDataBuffer(mem, size);
+     std::memset(mem, 0, size);
+ 
+     DxvkMemoryType* type = d9mtFindMemoryType(m_memTypes, m_memTypeCount,

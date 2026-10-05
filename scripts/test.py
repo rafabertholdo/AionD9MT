@@ -10,7 +10,7 @@ root = Path(__file__).resolve().parents[1]
 bridge = root / "tools/D9MT"
 output = root / ".build/tests"
 output.mkdir(parents=True, exist_ok=True)
-for name in ("wine_bridge", "frame_input_pump", "camera_mouse_capture", "mouse_motion", "input_dispatch"):
+for name in ("wine_bridge", "frame_input_pump", "camera_mouse_capture", "mouse_motion", "input_dispatch", "data_buffer_protection"):
     executable = output / name
     subprocess.run([
         "clang", "-std=c11", "-Wall", "-Wextra", "-Werror",
