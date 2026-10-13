@@ -29,6 +29,16 @@ static inline void d9mtPumpFrameInput(void) {
     }
 }
 
+#ifdef __cplusplus
+/* Present blocks on the frame-rate wait after the entry pump. Pump again on
+ * return so motion from that wait reaches DirectInput for the next update
+ * instead of one frame later. Declared before the device lock, so it runs
+ * after the lock is released. */
+struct D9mtPumpAfterPresent {
+    ~D9mtPumpAfterPresent() { d9mtPumpFrameInput(); }
+};
+#endif
+
 static void CALLBACK d9mtPumpWindowInput(HWND window, UINT message,
                                          UINT_PTR timer, DWORD elapsed) {
     (void)window;

@@ -45,7 +45,7 @@ def main():
     args = parser.parse_args()
     project = args.project.resolve()
     bridge = Path(__file__).resolve().parent
-    for name in ("d9mt.patch", "compute-dispatch.patch", "depth-stencil-cache.patch", "metal-invariance.patch", "skip-shaders.patch", "frame-input.patch", "timer-input.patch", "direct-input.patch", "data-buffer-protection.patch"):
+    for name in ("d9mt.patch", "compute-dispatch.patch", "depth-stencil-cache.patch", "metal-invariance.patch", "skip-shaders.patch", "frame-input.patch", "timer-input.patch", "present-exit-input.patch", "direct-input.patch", "data-buffer-protection.patch"):
         apply_patch(project, bridge / name)
     copy_frame_input_headers(project, bridge)
     shutil.copy2(bridge / "input_dispatch.h", project / "src/d9mtmetal/d9mt_input_dispatch.h")

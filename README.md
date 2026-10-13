@@ -21,17 +21,22 @@ Its CrossOver installation commands should not be used for ReRun.
 
 ```sh
 python3 scripts/test.py
-python3 scripts/verify-release.py dist/v0.1.1
+python3 scripts/verify-release.py dist/v0.1.2
 ```
 
 ## Build
 
 Requires Xcode with the Metal compiler, Rosetta 2, mingw-w64, glslang, bison,
-flex, Python 3, and Git. Wine's Unix driver is x86_64 and runs through Rosetta.
+flex, Python 3.12 or newer (`python3` must resolve to it; the macOS 3.9 lacks
+`tarfile` filters), and Git. Wine's Unix driver is x86_64 and runs through Rosetta.
 
 ```sh
 bash scripts/build.sh
+python3 scripts/package.py v0.1.2 dist/v0.1.1
 ```
+
+`package.py` stages the runtime layout, writes `dist/<release>` with
+`SHA256SUMS`, and refreshes `release-manifest.json`.
 
 The build uses an isolated working copy of the upstream snapshot and never
 installs into CrossOver or ReRun. Generated components are under `.build/`.
@@ -41,8 +46,8 @@ rebuilding may produce different bytes and requires a new checksum and release.
 ## Release delivery
 
 Keep binary assets in ignored `dist/`, outside Git history. Publish
-`dist/v0.1.1/AionD9MT.tar.gz`, `SHA256SUMS`, and `release-manifest.json`
-as assets of GitHub Release `v0.1.1` after committing and pushing the source.
+`dist/v0.1.2/AionD9MT.tar.gz`, `SHA256SUMS`, and `release-manifest.json`
+as assets of GitHub Release `v0.1.2` after committing and pushing the source.
 The repository must be public for ReRun's unauthenticated downloads.
 
 ReRun pins the versioned asset URL and SHA-256. It downloads on the first Play

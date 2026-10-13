@@ -28,6 +28,11 @@ with tarfile.open(archive) as bundle:
             files.add(str(path))
     if not required.issubset(files):
         raise SystemExit(f"Missing runtime files: {sorted(required - files)}")
+    # Wine refuses `=b` overrides for PE files without winebuild's marker.
+    for member in bundle.getmembers():
+        if member.isfile() and "-windows/" in member.name and \
+                not bundle.extractfile(member).read(0x50)[0x40:].startswith(b"Wine builtin DLL"):
+            raise SystemExit(f"Not marked as a Wine builtin: {member.name}")
 for name, expected in manifest["patches"].items():
     if hashlib.sha256((root / "tools/D9MT" / name).read_bytes()).hexdigest() != expected:
         raise SystemExit(f"Release source changed: {name}")

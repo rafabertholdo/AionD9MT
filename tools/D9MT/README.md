@@ -28,6 +28,14 @@ clipping path (`UseConfinementCursorClipping=n` only in the D9MT prefix).
 recenter calls; the prior clip is restored on release. Other mouse paths retain
 normal Wine behavior. Native diagnostic counters were removed from the bundle.
 
+Aion reads the camera through DirectInput 8 (`CryInput.dll`, raw input), and
+the 60 FPS wait happens inside `Present` after the entry pump.
+`present-exit-input.patch` pumps again when `Present` returns, so motion from
+that wait is delivered before the next update rather than a frame later.
+`camera-buttons.patch` keeps left+right drags (which macOS can report as left
+drags) on the relative camera path. The user confirmed noticeably smoother
+camera dragging in game (2026-10-13).
+
 ReRun's Aion tab has a persisted **Limit to 60 FPS** switch for Metal D9MT,
 enabled by default. It selects `DXVK_FRAME_RATE=60`; turning it off removes the
 cap without disabling the camera fixes. Changes apply on the next Play.

@@ -1,0 +1,10 @@
+--- a/vendor/dxvk/src/d3d9/d3d9_swapchain.cpp
++++ b/vendor/dxvk/src/d3d9/d3d9_swapchain.cpp
+@@ -114,6 +114,7 @@
+     d9mtUpdateInputPumpTimer(hDestWindowOverride ? hDestWindowOverride : m_presentParams.hDeviceWindow,
+                              &inputPumpWindow, &inputPumpTimer);
+     d9mtPumpFrameInput();
++    D9mtPumpAfterPresent pumpAfterPresent;
+     D3D9DeviceLock lock = m_parent->LockDevice();
+ 
+     m_parent->SetMostRecentlyUsedSwapchain(this);

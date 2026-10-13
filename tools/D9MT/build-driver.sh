@@ -23,7 +23,7 @@ import runpy
 import sys
 bridge = Path(sys.argv[1])
 apply_patch = runpy.run_path(str(bridge / "build-companion.py"))["apply_patch"]
-for name in ("wine-driver.patch", "cursor-warp.patch", "relative-mouse.patch"):
+for name in ("wine-driver.patch", "cursor-warp.patch", "relative-mouse.patch", "camera-buttons.patch"):
     apply_patch(Path(sys.argv[2]), bridge / name)
 PYTHON
 cp "$bridge_dir/wine_bridge.c" "$source_dir/dlls/winemac.drv/d9mt_bridge.c"

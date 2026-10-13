@@ -1,0 +1,14 @@
+--- a/dlls/winemac.drv/cocoa_app.m
++++ b/dlls/winemac.drv/cocoa_app.m
+@@ -1360,8 +1360,10 @@
+             CGPoint point = CGEventGetLocation([anEvent CGEvent]);
+             macdrv_event* event;
+             BOOL absolute;
++            /* Left+right drags can arrive as left drags; keep them on the camera path. */
+             BOOL relativeCamera = d9mtRelativeCameraMotion(self.clippingCursor,
+-                                    [anEvent type] == NSEventTypeRightMouseDragged);
++                                    [anEvent type] != NSEventTypeMouseMoved &&
++                                    ([NSEvent pressedMouseButtons] & 2) != 0);
+ 
+             // If we recently warped the cursor (other than in our cursor-clipping
+             // event tap), discard mouse move events until we see an event which is

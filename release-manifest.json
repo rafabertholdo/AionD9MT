@@ -1,7 +1,7 @@
 {
-  "release": "v0.1.1",
+  "release": "v0.1.2",
   "asset": "AionD9MT.tar.gz",
-  "sha256": "17452fcf10dbdf9c02dd2c62f875a215fc68ebbc352e75e393cb248db2b4cfa8",
+  "sha256": "d5e9d05fb087cc7f3f89e7aded11dd313c8e329585891f8598ea4fe2c42eacb2",
   "d9mt": {
     "repository": "https://github.com/neo773/d9mt",
     "revision": "237e2935e58355d1ee41fda097e1af272d5f62f0",
@@ -20,8 +20,9 @@
   "runtime": "WS11WineSikarugir11.0_1",
   "platform": "macOS Apple Silicon with Rosetta 2",
   "patches": {
-    "build-companion.py": "ae947c51a409302817ee0e031832373bbea72f813083e5d93b89e383f1848c11",
-    "build-driver.sh": "e8fe151f0c2e640f8ba7a8ad6edcbb948fe7a9130a5fd1964f58525d7049f207",
+    "build-companion.py": "8b339224b73ad88f3d5f6be2c40d73fd263b1dff3a97ec43031115b32a1e9bdd",
+    "build-driver.sh": "80ffe581e8305405cb6612f0c8d5355a0bd5679942189c3e50ea62b29f1e8f84",
+    "camera-buttons.patch": "ded9630eb348ea46e6bd1ff08c5dc61d242dd1106d2a950b9e5220e1d56237a0",
     "camera_mouse_capture.h": "5d36eebbf4f235adaf9dcd0c8198106e3d36812411f3e26fa26a9d95125eb6fc",
     "camera_mouse_capture_tests.c": "71ea2c943d464d159f77cbe6c710e42680bd50cc36dd47a898b339a194ab2d42",
     "compute-dispatch.patch": "e05c062d4b4856dfa736eb79e2afa040cdd30baef1edd63a3ff76508c52a5585",
@@ -35,7 +36,7 @@
     "direct-input.patch": "ec733d1293cc05e8aef44b7a304eaee2ad6163a032d0837be1619a071a03ce3c",
     "dxt3_probe.c": "dc30bf712cf4da95d3aebfdc458fa809567b967cd3ad28f76bff7c34be21f7e9",
     "frame-input.patch": "ff3c1d4891ac8e8e69c04d63abb764f06263b04d9fe8879f66af15a4fff90be4",
-    "frame_input_pump.h": "973133d172959b20105676265119d2e03b1bbc0625f4bbfc210340cd02b7327f",
+    "frame_input_pump.h": "32074cd21ad52a0c317bb060faa8da957d70a0e4c0f8d50bd2db1a0e3f4085c3",
     "frame_input_pump_tests.c": "22e720b4c82d50f9304e6db01074f56d867aecb74f951e468a7087cc6d933831",
     "input_dispatch.h": "429fb0e9b698bc7866205a11812b87c487ec9231dace03942de185e92544b27b",
     "input_dispatch_tests.c": "0429bc16c97c51e2c8885beab5395beddb14c365a31ccd9c72eb3ec2239807b5",
@@ -44,6 +45,7 @@
     "metal-invariance.patch": "56fd47f56fd3bb31028a6b3f9b943dc8db27541858ad702bc373a83e06d3e17e",
     "mouse_motion.h": "a2209f83d4ac6ea090c8876a493170a8c81aa3690ff3a87c09f5830e8d03d167",
     "mouse_motion_tests.c": "bb821529a3aa730fe94f7bea4b9d3e209a78ae854f7d5ca03cb5ab6c0cce946c",
+    "present-exit-input.patch": "a8e1cc6bb3e1a531fd4a46c99b22641fa47a6461618c651f85041548271e0c50",
     "relative-mouse.patch": "63f8280324f5e0d004159da389ac75f58008dcf1d5030e06a546d7c7b6bfc425",
     "render_probe.c": "d18800795671a58dfe7eaffe90a5baaf90dcb8cf74d6623e255f46483d3a9b95",
     "skip-shaders.patch": "e49c6479c72d9e09460fabe32c24a166e34fa5eeeb440f8e90951b3c6221d48f",
@@ -58,16 +60,16 @@
   },
   "components": {
     "NOTICE.txt": "9039079b87155d84b2287b22302d8c21974ff84ff042b1871b617cb3af40d0e4",
-    "d3d9.dll": "4c1f7c1c01e987349634f62576c271879c02d43ef0f7e427710f6d13267967ce",
-    "i386-windows/d9mtmetal.dll": "fc28448fe6e0a85c62522ae60a6c4d12d17eb81157ea1b5148904840a2e33ef1",
+    "d3d9.dll": "6bf610aa3914ee6d4259977dd2adbda6d4eb199f97d99e47d1012b580c4b7ed7",
+    "i386-windows/d9mtmetal.dll": "6aafe777ed112cec0c6b9f19d65875d1dbc396acf97c69f26defa14983ddbae7",
     "i386-windows/winemetal.dll": "20a6865facebdaac92b6c06fadf37d2efb5a242b22ca1c349bb57d7ad43df8e3",
     "licenses/DXMT-LICENSE": "6b928413c6308c106f3e0080bd94b6427b56d587d400fd40e6cbfbab7d9c4ae1",
     "licenses/SPIRV-Cross-LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "licenses/Wine-COPYING.LIB": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c",
     "x86_64-unix/d9mtmetal.so": "ed9dc1af65ed76a380c4fafb543d408f87fd2aa16e92a5ef6cdb5a5935ffb705",
-    "x86_64-unix/winemac.so": "1cae1bbc2c27112ea857adb90900a56a9ba6097ed11a89f1c8734b3a358c991e",
+    "x86_64-unix/winemac.so": "4d2ece3754e3450ced2f8684f64f11e7d8293a7513bbfb8e95958b01433eb4f3",
     "x86_64-unix/winemetal.so": "3d50d7f39c64778c71d0af2fce1cde818d09ffbce7c4f7b8ae24ae1df567c0ca",
-    "x86_64-windows/d9mtmetal.dll": "7369a4defbc6f79ea48742981738d7a8c61c24798fb59cd7bb59967b84967b6f",
+    "x86_64-windows/d9mtmetal.dll": "9129bf6ec084723b36c236e2cab68456ff78ef4ce324df928e74dea9aa39d9d8",
     "x86_64-windows/winemetal.dll": "514245d533c750599614311a792c45ed600aef52948571d98c0fc70fd3df16e0"
   }
 }
